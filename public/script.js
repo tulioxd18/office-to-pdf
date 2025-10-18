@@ -2,41 +2,45 @@ const fileInput = document.getElementById('fileInput')
 const descargarBtn = document.getElementById('Descargarbtn')
 const limpiarBtn = document.getElementById('Limpiarbtn')
 const filenameEl = document.getElementById('filename')
-const messageEl = document.getElementById('message')
+const messageEl = document.getElementById('message') // ← este puede ser null si falta en el HTML
 const pdfPreview = document.getElementById('pdfPreview')
 
 let pdfUrl = ''
 let createdObjectUrl = null
 const allowedExt = ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx']
 
+function setMessage(text) {
+    if (messageEl) messageEl.textContent = text
+}
+
+function resetPreview() {
+    pdfPreview.style.display = 'none'
+    pdfPreview.src = ''
+    pdfUrl = ''
+    if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
+    createdObjectUrl = null
+}
+
 fileInput.addEventListener('change', async () => {
-    messageEl.textContent = ''
+    setMessage('')
     const file = fileInput.files[0]
     if (!file) {
         descargarBtn.disabled = true
         filenameEl.textContent = 'Ningún archivo seleccionado'
-        pdfPreview.style.display = 'none'
-        pdfPreview.src = ''
-        pdfUrl = ''
-        if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
-        createdObjectUrl = null
+        resetPreview()
         return
     }
 
     const ext = '.' + file.name.split('.').pop().toLowerCase()
     if (!allowedExt.includes(ext)) {
-        messageEl.textContent = `Formato no permitido. Suba Word (.doc/.docx), PowerPoint (.ppt/.pptx) o Excel (.xls/.xlsx).`
+        setMessage('Formato no permitido. Suba Word (.doc/.docx), PowerPoint (.ppt/.pptx) o Excel (.xls/.xlsx).')
         fileInput.value = ''
         return
     }
 
     filenameEl.textContent = file.name
     descargarBtn.disabled = true
-    pdfPreview.style.display = 'none'
-    pdfPreview.src = ''
-    pdfUrl = ''
-    if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
-    createdObjectUrl = null
+    resetPreview()
 
     const formData = new FormData()
     formData.append('file', file)
@@ -45,7 +49,7 @@ fileInput.addEventListener('change', async () => {
         const res = await fetch('/api/convert', { method: 'POST', body: formData })
         if (!res.ok) {
             const txt = await res.text()
-            messageEl.textContent = txt || 'Error al convertir el archivo'
+            setMessage(txt || 'Error al convertir el archivo')
             return
         }
 
@@ -55,14 +59,10 @@ fileInput.addEventListener('change', async () => {
         pdfPreview.src = pdfUrl
         pdfPreview.style.display = 'block'
         descargarBtn.disabled = false
-        messageEl.textContent = 'Archivo convertido correctamente. Puede previsualizarlo o descargarlo.'
+        setMessage('Archivo convertido correctamente. Puede previsualizarlo o descargarlo.')
     } catch (e) {
-        messageEl.textContent = 'Error al convertir el archivo. Intente de nuevo.'
-        if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
-        createdObjectUrl = null
-        pdfUrl = ''
-        pdfPreview.style.display = 'none'
-        pdfPreview.src = ''
+        setMessage('Error al convertir el archivo. Intente de nuevo.')
+        resetPreview()
         descargarBtn.disabled = true
     }
 })
@@ -80,11 +80,7 @@ descargarBtn.addEventListener('click', () => {
 limpiarBtn.addEventListener('click', () => {
     fileInput.value = ''
     filenameEl.textContent = 'Ningún archivo seleccionado'
-    pdfPreview.src = ''
-    pdfPreview.style.display = 'none'
+    resetPreview()
     descargarBtn.disabled = true
-    messageEl.textContent = ''
-    pdfUrl = ''
-    if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
-    createdObjectUrl = null
+    setMessage('')
 })
