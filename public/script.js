@@ -21,10 +21,8 @@ fileInput.addEventListener('change', async () => {
         pdfPreview.style.display = 'none'
         pdfPreview.src = ''
         pdfUrl = ''
-        if (createdObjectUrl) {
-            URL.revokeObjectURL(createdObjectUrl)
-            createdObjectUrl = null
-        }
+        if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
+        createdObjectUrl = null
         return
     }
     filenameEl.textContent = file.name
@@ -32,10 +30,9 @@ fileInput.addEventListener('change', async () => {
     pdfPreview.style.display = 'none'
     pdfPreview.src = ''
     pdfUrl = ''
-    if (createdObjectUrl) {
-        URL.revokeObjectURL(createdObjectUrl)
-        createdObjectUrl = null
-    }
+    if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
+    createdObjectUrl = null
+
     const formData = new FormData()
     formData.append('file', file)
     try {
@@ -45,37 +42,20 @@ fileInput.addEventListener('change', async () => {
             alert(txt || 'Error al convertir el archivo')
             return
         }
-        const contentType = res.headers.get('content-type') || ''
-        if (contentType.includes('application/json')) {
-            const data = await res.json()
-            if (!data || !data.url) {
-                alert('Respuesta inválida del servidor')
-                return
-            }
-            pdfUrl = data.url
-            pdfPreview.src = pdfUrl
-            pdfPreview.style.display = 'block'
-            descargarBtn.disabled = false
-        } else if (contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
-            const blob = await res.blob()
-            createdObjectUrl = URL.createObjectURL(blob)
-            pdfUrl = createdObjectUrl
-            const dispo = res.headers.get('content-disposition') || ''
-            const name = getFilenameFromDisposition(dispo) || file.name.replace(/\.[^/.]+$/, '') + '.pdf'
-            descargarBtn.dataset.filename = name
-            pdfPreview.src = pdfUrl
-            pdfPreview.style.display = 'block'
-            descargarBtn.disabled = false
-        } else {
-            const txt = await res.text()
-            alert(txt || 'Tipo de respuesta desconocido')
-        }
+
+        const blob = await res.blob()
+        createdObjectUrl = URL.createObjectURL(blob)
+        pdfUrl = createdObjectUrl
+        const dispo = res.headers.get('content-disposition') || ''
+        const name = getFilenameFromDisposition(dispo) || file.name.replace(/\.[^/.]+$/, '') + '.pdf'
+        descargarBtn.dataset.filename = name
+        pdfPreview.src = pdfUrl
+        pdfPreview.style.display = 'block'
+        descargarBtn.disabled = false
     } catch (e) {
         alert('Error al convertir el archivo')
-        if (createdObjectUrl) {
-            URL.revokeObjectURL(createdObjectUrl)
-            createdObjectUrl = null
-        }
+        if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
+        createdObjectUrl = null
         pdfUrl = ''
         pdfPreview.style.display = 'none'
         pdfPreview.src = ''
@@ -101,8 +81,6 @@ limpiarBtn.addEventListener('click', () => {
     pdfPreview.style.display = 'none'
     descargarBtn.disabled = true
     pdfUrl = ''
-    if (createdObjectUrl) {
-        URL.revokeObjectURL(createdObjectUrl)
-        createdObjectUrl = null
-    }
+    if (createdObjectUrl) URL.revokeObjectURL(createdObjectUrl)
+    createdObjectUrl = null
 })
