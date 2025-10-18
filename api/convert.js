@@ -1,53 +1,58 @@
-import parseMultipart from 'parse-multipart';
-import FormData from 'form-data';
-import fetch from 'node-fetch';
-
-export const config = { api: { bodyParser: false } };
+import formidable from 'formidable';
+import fs from 'fs';
+import CloudmersiveConvertApiClient from 'cloudmersive-convert-api-client';
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).send('Solo POST permitido');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const bodyBuffer = Buffer.concat(chunks);
+    if (!process.env.CLOUDMERSIVE_API_KEY) return res.status(500).send('Falta CLOUDMERSIVE_API_KEY');
 
-    const contentType = req.headers['content-type'];
-    if (!contentType || !contentType.includes('multipart/form-data'))
-        return res.status(400).send('Archivo inválido');
+    const form = new formidable.IncomingForm();
+    form.parse(req, async (err, fields, files) => {
+        if (err || !files.file) return res.status(400).send('No file uploaded');
 
-    const boundaryMatch = contentType.match(/boundary=(.+)$/);
-    const boundary = boundaryMatch[1];
-    const parts = parseMultipart.Parse(bodyBuffer, boundary);
-    const filePart = parts.find(p => p.filename);
-    if (!filePart) return res.status(400).send('No se recibió ningún archivo');
+        const file = files.file;
+        const ext = file.originalFilename.split('.').pop().toLowerCase();
 
-    const ext = filePart.filename.split('.').pop().toLowerCase();
-    const allowed = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
-    if (!allowed.includes(ext))
-        return res.status(400).send('Formato no permitido. Suba Word (.doc/.docx), PowerPoint (.ppt/.pptx) o Excel (.xls/.xlsx).');
+        const allowedExt = ['docx', 'pptx', 'xlsx'];
+        if (!allowedExt.includes(ext)) return res.status(400).send('Solo se permiten archivos Word, PowerPoint o Excel');
 
-    const apiKey = process.env.CLOUDMERSIVE_API_KEY;
-    if (!apiKey) return res.status(500).send('Falta la API Key');
+        const defaultClient = CloudmersiveConvertApiClient.ApiClient.instance;
+        defaultClient.authentications['Apikey'].apiKey = process.env.CLOUDMERSIVE_API_KEY;
+        const api = new CloudmersiveConvertApiClient.ConvertDocumentApi();
+        const inputFile = fs.readFileSync(file.filepath);
 
-    let url = 'https://api.cloudmersive.com/convert/docx/to/pdf';
-    if (ext === 'doc') url = 'https://api.cloudmersive.com/convert/docx/to/pdf';
-    if (ext === 'ppt' || ext === 'pptx') url = 'https://api.cloudmersive.com/convert/pptx/to/pdf';
-    if (ext === 'xls' || ext === 'xlsx') url = 'https://api.cloudmersive.com/convert/xlsx/to/pdf';
+        try {
+            let pdfBuffer;
+            if (ext === 'docx') {
+                pdfBuffer = await new Promise((resolve, reject) => {
+                    api.convertDocumentDocxToPdf(inputFile, (error, data) => {
+                        if (error) reject(error);
+                        else resolve(Buffer.from(data, 'base64'));
+                    });
+                });
+            } else if (ext === 'pptx') {
+                pdfBuffer = await new Promise((resolve, reject) => {
+                    api.convertDocumentPptxToPdf(inputFile, (error, data) => {
+                        if (error) reject(error);
+                        else resolve(Buffer.from(data, 'base64'));
+                    });
+                });
+            } else if (ext === 'xlsx') {
+                pdfBuffer = await new Promise((resolve, reject) => {
+                    api.convertDocumentXlsxToPdf(inputFile, (error, data) => {
+                        if (error) reject(error);
+                        else resolve(Buffer.from(data, 'base64'));
+                    });
+                });
+            }
 
-    try {
-        const form = new FormData();
-        form.append('file', filePart.data, { filename: filePart.filename });
-
-        const resp = await fetch(url, { method: 'POST', headers: { Apikey: apiKey }, body: form });
-        if (!resp.ok) {
-            const txt = await resp.text().catch(() => '');
-            return res.status(resp.status).send(txt || 'Error al convertir el archivo');
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${file.originalFilename.replace(/\.[^.]+$/, '.pdf')}"`);
+            res.send(pdfBuffer);
+        } catch (e) {
+            console.error(e);
+            res.status(500).send('Error al convertir el archivo');
         }
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${filePart.filename.replace(/\.[^/.]+$/, '')}.pdf"`);
-        resp.body.pipe(res);
-    } catch (err) {
-        res.status(500).send('Error interno al convertir el archivo');
-    }
+    });
 }
