@@ -10,7 +10,8 @@
     <meta name="google-adsense-account" content="ca-pub-6470490676883813">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6470490676883813"
         crossorigin="anonymous"></script>
-    <script src="https://www.paypalobjects.com/ncp/cart/cart.js" data-merchant-id="4XWJMNU36ABEN"></script>
+    <script
+        src="https://www.paypal.com/sdk/js?client-id=BAAh3W39daP9b5S7kO1DB_njAtMb5vOsSl00wlkqmY2kohn_SVEwj6IAnv85wARkBUlHR_O4oYL4r2-cGc&components=hosted-buttons&disable-funding=venmo&currency=USD"></script>
 </head>
 
 <body>
@@ -18,39 +19,44 @@
         <div class="adsense-block">
             <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6470490676883813"
                 data-ad-slot="8346218908" data-ad-format="auto" data-full-width-responsive="true"></ins>
-            <script>
-                (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
         </div>
-        <h1>Convertidor de documetos, excel y power point a PDF</h1>
+
+        <h1>Convertidor de documentos, Excel y PowerPoint a PDF</h1>
+
         <div class="layout">
             <div class="left-panel">
-                <div class="controls">
+                <div class="controls" role="form" aria-label="Controles de conversión">
                     <label class="filelabel">Seleccionar archivo
-                        <input id="fileInput" type="file" accept=".docx,.pptx,.xlsx">
+                        <input id="fileInput" name="file" type="file" accept=".doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                            aria-describedby="filename message" />
                     </label>
-                    <button id="Descargarbtn" disabled>Descargar PDF</button>
-                    <button id="Limpiarbtn">Limpiar</button>
+                    <button id="Descargarbtn" type="button" disabled>Descargar PDF</button>
+                    <button id="Limpiarbtn" type="button">Limpiar</button>
                 </div>
-                <div class="info">
-                    <p id="filename">Ningún archivo seleccionado</p>
-                    <p id="message"></p>
-                </div>
-                <paypal-cart-button data-id="pp-view-cart">Donativos</paypal-cart-button>
-                <script>
-                    cartPaypal.Cart({ id: "pp-view-cart" })
-                </script>
 
+                <div class="info" aria-live="polite">
+                    <p id="filename">Ningún archivo seleccionado</p>
+                    <p id="message" role="status"></p>
+                </div>
+
+                <div id="paypal-container-F362U3ZJV49HC" aria-hidden="false"></div>
+                <script>
+                    paypal.HostedButtons({
+                        hostedButtonId: "F362U3ZJV49HC"
+                    }).render("#paypal-container-F362U3ZJV49HC")
+                </script>
             </div>
 
             <div class="right-panel">
-                <section class="preview-section">
+                <section class="preview-section" aria-label="Vista previa del PDF">
                     <h2>Vista previa</h2>
-                    <iframe id="pdfPreview" class="preview" style="display:none;"></iframe>
+                    <iframe id="pdfPreview" class="preview" style="display:none;" title="Vista previa de PDF"></iframe>
                 </section>
             </div>
         </div>
     </main>
+
     <script src="script.js"></script>
 </body>
 
