@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const ext = file.name.split('.').pop().toLowerCase();
-        if (!['doc', 'docx', 'pptx', 'ppt', 'xlsx', 'xls'].includes(ext)) {
+        if (!['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
             alert('Solo se permiten archivos Word, PowerPoint o Excel');
             fileInput.value = '';
             return;
@@ -41,6 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: arrayBuffer
             });
 
+            if (res.status === 405) {
+                alert('Método no permitido. Asegúrate de no acceder a la URL directamente en el navegador.');
+                messageEl.textContent = '';
+                return;
+            }
+
             if (!res.ok) {
                 const txt = await res.text();
                 alert(txt || 'Error al convertir el archivo');
@@ -55,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
             descargarBtn.disabled = false;
             messageEl.textContent = 'Archivo listo';
         } catch (e) {
+            console.error(e);
             alert('Error al convertir el archivo');
             messageEl.textContent = '';
         }
