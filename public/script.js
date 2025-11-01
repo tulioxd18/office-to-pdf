@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const ext = file.name.split('.').pop().toLowerCase();
-        if (!['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+        if (!['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'xlsb'].includes(ext)) {
             alert('Solo se permiten archivos Word, PowerPoint o Excel');
             fileInput.value = '';
             return;
@@ -42,14 +42,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (res.status === 405) {
-                alert('Método no permitido. Asegúrate de no acceder a la URL directamente en el navegador.');
+                alert('Método no permitido. No accedas a la URL directamente.');
                 messageEl.textContent = '';
                 return;
             }
 
             if (!res.ok) {
                 const txt = await res.text();
-                alert(txt || 'Error al convertir el archivo');
+                let msg = txt || 'Error al convertir el archivo. ';
+                if (['ppt','pptx'].includes(ext)) msg += 'Intenta guardar el archivo como .pptx desde PowerPoint si falla.';
+                if (['xls','xlsx','xlsb'].includes(ext)) msg += 'Intenta guardar el archivo como .xlsx desde Excel si falla.';
+                if (['doc','docx'].includes(ext)) msg += 'Intenta guardar el archivo como .docx desde Word si falla.';
+                alert(msg);
                 messageEl.textContent = '';
                 return;
             }
@@ -62,7 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             messageEl.textContent = 'Archivo listo';
         } catch (e) {
             console.error(e);
-            alert('Error al convertir el archivo');
+            let msg = 'Error al convertir el archivo. ';
+            if (['ppt','pptx'].includes(ext)) msg += 'Puede ser un PowerPoint inválido o corrupto.';
+            else if (['xls','xlsx','xlsb'].includes(ext)) msg += 'Puede ser un Excel inválido o corrupto.';
+            else if (['doc','docx'].includes(ext)) msg += 'Puede ser un Word inválido o corrupto.';
+            alert(msg);
             messageEl.textContent = '';
         }
     });
