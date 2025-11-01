@@ -17,7 +17,7 @@ export default async function handler(req, res) {
         if (!originalFilename) return res.status(400).send('No se pudo leer el archivo');
 
         const ext = originalFilename.split('.').pop().toLowerCase();
-        if (!['doc','docx','ppt','pptx','xls','xlsx','xlsb'].includes(ext))
+        if (!['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'xlsb'].includes(ext))
             return res.status(400).send('Solo se permiten archivos Word, Excel o PowerPoint');
 
         const safeFilename = path.basename(originalFilename);
