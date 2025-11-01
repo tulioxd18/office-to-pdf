@@ -78,7 +78,7 @@ button:disabled {
 }
 
 .preview-section {
-    height: 70vh;
+    height: 85vh;
     display: flex;
     flex-direction: column;
 }
@@ -94,6 +94,7 @@ button:disabled {
     border-radius: 8px;
     background: #ffffff;
     overflow: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .preview iframe {
@@ -149,7 +150,7 @@ button:disabled {
 
 @media(max-width:880px) {
     .preview-section {
-        height: 50vh;
+        height: 65vh;
     }
 
     .left-panel,
