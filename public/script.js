@@ -1,89 +1,56 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const fileInput = document.getElementById('fileInput');
-    const descargarBtn = document.getElementById('Descargarbtn');
-    const limpiarBtn = document.getElementById('Limpiarbtn');
-    const filenameEl = document.getElementById('filename');
-    const messageEl = document.getElementById('message');
-    const pdfPreview = document.getElementById('pdfPreview');
-    let pdfUrl = '';
+import fs from 'fs';
+import path from 'path';
+import CloudmersiveConvertApiClient from 'cloudmersive-convert-api-client';
 
-    fileInput.addEventListener('change', async () => {
-        const file = fileInput.files[0];
-        if (!file) {
-            descargarBtn.disabled = true;
-            filenameEl.textContent = 'Ningún archivo seleccionado';
-            pdfPreview.style.display = 'none';
-            pdfPreview.src = '';
-            pdfUrl = '';
-            return;
-        }
+export const config = { api: { bodyParser: false } };
 
-        const ext = file.name.split('.').pop().toLowerCase();
+export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).send('Método no permitido');
+    if (!process.env.CLOUDMERSIVE_API_KEY) return res.status(500).send('Falta CLOUDMERSIVE_API_KEY');
+
+    try {
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const buffer = Buffer.concat(chunks);
+
+        const originalFilename = req.headers['x-filename'];
+        if (!originalFilename) return res.status(400).send('No se pudo leer el archivo');
+
+        const ext = originalFilename.split('.').pop().toLowerCase();
         if (!['doc','docx','ppt','pptx','xls','xlsx','xlsb'].includes(ext)) {
-            alert('Solo se permiten Word, Excel o PowerPoint');
-            fileInput.value = '';
-            return;
+            return res.status(400).send('Solo se permiten archivos Word, Excel o PowerPoint');
         }
 
-        filenameEl.textContent = file.name;
-        descargarBtn.disabled = true;
-        pdfPreview.style.display = 'none';
-        pdfPreview.src = '';
-        pdfUrl = '';
+        const safeFilename = path.basename(originalFilename);
+        const tempPath = path.join('/tmp', safeFilename);
+        fs.writeFileSync(tempPath, buffer);
 
-        try {
-            messageEl.textContent = 'Convirtiendo archivo...';
-            const arrayBuffer = await file.arrayBuffer();
+        console.log('Archivo temporal creado:', tempPath, 'Tamaño:', fs.statSync(tempPath).size);
 
-            const res = await fetch('/api/convert', {
-                method: 'POST',
-                headers: { 'X-Filename': file.name },
-                body: arrayBuffer
-            });
+        const client = CloudmersiveConvertApiClient.ApiClient.instance;
+        client.authentications['Apikey'].apiKey = process.env.CLOUDMERSIVE_API_KEY;
+        const api = new CloudmersiveConvertApiClient.ConvertDocumentApi();
 
-            if (res.status === 405) {
-                alert('Método no permitido. No accedas a la URL directamente.');
-                messageEl.textContent = '';
-                return;
-            }
+        const pdfBuffer = await new Promise((resolve, reject) =>
+            api.convertDocumentAutodetectToPdf(tempPath, (err, data) =>
+                err ? reject(err) : resolve(Buffer.from(data, 'base64'))
+            )
+        );
 
-            if (!res.ok) {
-                const txt = await res.text();
-                alert(txt || 'Error al convertir el archivo. Revisa que sea un archivo válido.');
-                messageEl.textContent = '';
-                return;
-            }
+        fs.unlinkSync(tempPath);
 
-            const blob = await res.blob();
-            pdfUrl = URL.createObjectURL(blob);
-            pdfPreview.src = pdfUrl;
-            pdfPreview.style.display = 'block';
-            descargarBtn.disabled = false;
-            messageEl.textContent = 'Archivo listo';
-        } catch (e) {
-            console.error(e);
-            alert('Error al convertir el archivo. Puede ser inválido o contener elementos no soportados.');
-            messageEl.textContent = '';
+        if (!pdfBuffer || pdfBuffer.length === 0) {
+            return res.status(500).send('No se pudo generar el PDF');
         }
-    });
 
-    descargarBtn.addEventListener('click', () => {
-        if (!pdfUrl) return alert('No hay PDF para descargar');
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = filenameEl.textContent.replace(/\.[^.]+$/, '.pdf');
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-    });
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${safeFilename.replace(/\.[^.]+$/, '.pdf')}"`);
+        res.send(pdfBuffer);
 
-    limpiarBtn.addEventListener('click', () => {
-        fileInput.value = '';
-        filenameEl.textContent = 'Ningún archivo seleccionado';
-        messageEl.textContent = '';
-        pdfPreview.src = '';
-        pdfPreview.style.display = 'none';
-        descargarBtn.disabled = true;
-        pdfUrl = '';
-    });
-});
+    } catch (e) {
+        console.error('Error al convertir archivo:', e);
+        res.status(500).send(
+            'Error interno al convertir el archivo. Intenta con otro archivo o verifica que sea válido.'
+        );
+    }
+}
