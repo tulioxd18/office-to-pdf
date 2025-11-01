@@ -15,10 +15,10 @@ export default async function handler(req, res) {
         if (!originalFilename) return res.status(400).send('No se pudo leer el archivo');
 
         const ext = originalFilename.split('.').pop().toLowerCase();
+        if (!['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext))
+            return res.status(400).send('Solo se permiten archivos Word, PowerPoint o Excel');
 
-        const wordExts = ['doc', 'docx', 'dot', 'dotx', 'docm', 'dotm'];
-        const pptExts = ['ppt', 'pptx', 'pps', 'ppsx', 'pptm', 'ppsm'];
-        const excelExts = ['xls', 'xlsx', 'xlsm', 'xlsb', 'xlt', 'xltx', 'xltm'];
+        console.log('Archivo recibido:', originalFilename, 'Extensión:', ext, 'Tamaño del buffer:', buffer.length);
 
         const client = CloudmersiveConvertApiClient.ApiClient.instance;
         client.authentications['Apikey'].apiKey = process.env.CLOUDMERSIVE_API_KEY;
@@ -26,18 +26,43 @@ export default async function handler(req, res) {
 
         let pdfBuffer;
 
-        if (wordExts.includes(ext)) {
-            pdfBuffer = await api.convertDocumentDocxToPdf(buffer);
-        } else if (pptExts.includes(ext)) {
-            pdfBuffer = await api.convertDocumentPptxToPdf(buffer);
-        } else if (excelExts.includes(ext)) {
-            pdfBuffer = await api.convertDocumentXlsxToPdf(buffer);
-        } else {
-            return res.status(400).send('Solo se permiten archivos de Word, PowerPoint o Excel');
+        // Word
+        if (ext === 'docx') {
+            pdfBuffer = await new Promise((resolve, reject) =>
+                api.convertDocumentDocxToPdf(buffer, (err, data) => err ? reject(err) : resolve(Buffer.from(data, 'base64')))
+            );
+        } else if (ext === 'doc') {
+            pdfBuffer = await new Promise((resolve, reject) =>
+                api.convertDocumentDocToPdf(buffer, (err, data) => err ? reject(err) : resolve(Buffer.from(data, 'base64')))
+            );
         }
 
-        if (!pdfBuffer || pdfBuffer.length === 0)
+        // PowerPoint
+        else if (ext === 'pptx') {
+            pdfBuffer = await new Promise((resolve, reject) =>
+                api.convertDocumentPptxToPdf(buffer, (err, data) => err ? reject(err) : resolve(Buffer.from(data, 'base64')))
+            );
+        } else if (ext === 'ppt') {
+            pdfBuffer = await new Promise((resolve, reject) =>
+                api.convertDocumentPptToPdf(buffer, (err, data) => err ? reject(err) : resolve(Buffer.from(data, 'base64')))
+            );
+        }
+
+        // Excel
+        else if (ext === 'xlsx') {
+            pdfBuffer = await new Promise((resolve, reject) =>
+                api.convertDocumentXlsxToPdf(buffer, (err, data) => err ? reject(err) : resolve(Buffer.from(data, 'base64')))
+            );
+        } else if (ext === 'xls') {
+            pdfBuffer = await new Promise((resolve, reject) =>
+                api.convertDocumentXlsToPdf(buffer, (err, data) => err ? reject(err) : resolve(Buffer.from(data, 'base64')))
+            );
+        }
+
+
+        if (!pdfBuffer || pdfBuffer.length === 0) {
             return res.status(500).send('No se pudo generar el PDF');
+        }
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${originalFilename.replace(/\.[^.]+$/, '.pdf')}"`);
@@ -45,6 +70,6 @@ export default async function handler(req, res) {
 
     } catch (e) {
         console.error('Error al convertir archivo:', e);
-        res.status(500).send('Error interno al convertir el archivo.');
+        res.status(500).send('Error interno al convertir el archivo. Asegúrate de que el archivo sea válido y no muy pesado.');
     }
 }
