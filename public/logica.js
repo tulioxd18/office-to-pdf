@@ -18,6 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+
+    const maxSize = 3 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('El archivo es demasiado pesado. Máximo permitido: 3 MB');
+      fileInput.value = '';
+      filenameEl.textContent = 'Ningún archivo seleccionado';
+      return;
+    }
+
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['doc','docx','ppt','pptx','xls','xlsx','xlsb'].includes(ext)) {
       alert('Solo se permiten Word, Excel o PowerPoint');
